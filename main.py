@@ -1,135 +1,84 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
+def f1(x, y):
+    return np.sin(x) + y - 1
 
-def read_matrix_from_file(filename):
-    """Считывает матрицу A и вектор b из файла."""
-    with open(filename, 'r') as file:
-        while True:
-            try:
-                n = int(file.readline())
-                if n > 20:
-                    print("ValueError: Размерность матрицы должна быть не более 20.")
-                    continue
-                break
-            except ValueError:
-                print("ValueError: Размерность матрицы должна быть не более 20.")
-        A = [list(map(float, file.readline().split())) for _ in range(n)]
-        b = list(map(float, file.readline().split()))
-    return np.array(A), np.array(b)
+def f2(x, y):
+    return x**2 + y**2 - 4
 
+def g1(x, y):
+    return np.cos(y) - x
 
-def read_matrix_from_input():
-    """Считывает матрицу A и вектор b с клавиатуры."""
-    while True:
-        try:
-            n = int(input("Введите размерность матрицы (не более 20): "))
-            if n > 20:
-                print("ValueError: Размерность матрицы должна быть не более 20.")
-                continue
-            break
-        except ValueError:
-            print("ValueError: Размерность матрицы должна быть не более 20.")
-    A = []
-    print("Введите коэффициенты матрицы A (по строкам, через пробел):")
-    for _ in range(n):
-        while True:
-            try:
-                row = list(map(float, input().split()))
-                if len(row) != n:
-                    raise ValueError(f"Ожидалось {n} чисел, введено {len(row)}.")
-                A.append(row)
-                break
-            except ValueError as e:
-                print("Ошибка ввода! Повторите ввод строки:", e)
-    print("Введите коэффициенты вектора b (через пробел):")
-    while True:
-        try:
-            b = list(map(float, input().split()))
-            if len(b) != n:
-                raise ValueError(f"Ожидалось {n} чисел, введено {len(b)}.")
-            break
-        except ValueError as e:
-            print("Ошибка ввода! Повторите ввод:", e)
-    return np.array(A), np.array(b)
+def g2(x, y):
+    return y - np.exp(x) + 1
 
+def phi1_1(x, y):
+    return 1 - np.sin(x)
 
-def check_diagonal_dominance(A):
-    """Проверяет, обладает ли матрица диагональным преобладанием."""
-    n = A.shape[0]
-    for i in range(n):
-        sum_row = sum(abs(A[i, j]) for j in range(n) if i != j)
-        if abs(A[i, i]) < sum_row:
-            return False
-    return True
+def phi1_2(x, y):
+    return np.sqrt(4 - x**2) if x**2 <= 4 else y
 
+def phi2_1(x, y):
+    return np.cos(y)
 
-def enforce_diagonal_dominance(A, b):
-    """Пытается добиться диагонального преобладания путем перестановки строк."""
-    n = A.shape[0]
-    indices = np.argsort(-np.abs(A.diagonal()))
-    A, b = A[indices], b[indices]
-    if not check_diagonal_dominance(A):
-        print("Невозможно достичь диагонального преобладания.")
-        return None, None
-    return A, b
+def phi2_2(x, y):
+    return np.exp(x) - 1
 
-
-def compute_determinant(A):
-    """Вычисляет определитель матрицы A."""
-    return np.linalg.det(A)
-
-
-def gauss_seidel(A, b, tol=1e-6, max_iterations=1000):
-    """Решает систему методом Гаусса-Зейделя."""
-    n = len(A)
-    x = np.zeros(n)
-    for iteration in range(max_iterations):
-        x_new = np.copy(x)
-        for i in range(n):
-            sum1 = sum(A[i][j] * x_new[j] for j in range(i))
-            sum2 = sum(A[i][j] * x[j] for j in range(i + 1, n))
-            x_new[i] = (b[i] - sum1 - sum2) / A[i][i]
-        error = np.linalg.norm(x_new - x, ord=np.inf)
+def simple_iteration(x0, y0, phi1, phi2, tol=1e-6, max_iter=100):
+    x, y = x0, y0
+    values = [(x, y)]
+    for k in range(max_iter):
+        x_new, y_new = phi1(x, y), phi2(x, y)
+        error = np.sqrt((x_new - x)**2 + (y_new - y)**2)
+        values.append((x_new, y_new))
+        print(f"Iteration {k+1}: x = {x_new:.6f}, y = {y_new:.6f}, error = {error:.6e}")
         if error < tol:
-            return x_new, iteration + 1
-        x = x_new
-    print("Метод не сошелся за", max_iterations, "итераций.")
-    return x, max_iterations
+            return x_new, y_new, k+1, values
+        x, y = x_new, y_new
+    print("Предупреждение: Метод не сошелся за указанное число итераций!")
+    return x, y, max_iter, values
 
-
-def main():
-    choice = input("Вы хотите ввести данные с клавиатуры (k) или из файла (f)? ")
-    if choice.lower() == 'f':
-        filename = input("Введите имя файла: ")
-        A, b = read_matrix_from_file(filename)
-    else:
-        A, b = read_matrix_from_input()
-
-    print("Определитель матрицы:", compute_determinant(A))
-
-    if not check_diagonal_dominance(A):
-        print("Матрица не обладает диагональным преобладанием. Пытаемся переставить строки...")
-        A, b = enforce_diagonal_dominance(A, b)
-        if A is None:
-            return
-
-    print("Решаем методом Гаусса-Зейделя...")
-    solution, iterations = gauss_seidel(A, b)
-    print("Вектор неизвестных:", solution)
-    print("Количество итераций:", iterations)
-
-    # Вычисление невязки
-    residual = b - np.dot(A, solution)
-    print("Вектор невязок:", residual)
-
-    # Вычисление нормы погрешности
-    print("Норма погрешности:", np.linalg.norm(residual))
-
-    # Проверка с решением с помощью numpy.linalg.solve
-    lib_solution = np.linalg.solve(A, b)
-    print("Решение с использованием библиотеки:", lib_solution)
-    print("Разница между решениями:", np.linalg.norm(solution - lib_solution))
-
+def plot_functions(f1, f2):
+    x = np.linspace(-2, 2, 400)
+    y = np.linspace(-2, 2, 400)
+    X, Y = np.meshgrid(x, y)
+    Z1 = f1(X, Y)
+    Z2 = f2(X, Y)
+    plt.contour(X, Y, Z1, levels=[0], colors='r')
+    plt.contour(X, Y, Z2, levels=[0], colors='b')
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Графики уравнений")
+    plt.grid()
+    plt.show()
 
 if __name__ == "__main__":
-    main()
+    while True:
+        mode = input("Выберите режим (equation/system) или 'exit' для выхода: ").strip().lower()
+        if mode == 'exit':
+            break
+        elif mode == 'system':
+            print("Выберите систему уравнений:")
+            print("1. sin(x) + y = 1 и x^2 + y^2 = 4")
+            print("2. cos(y) - x = 0 и y - exp(x) + 1 = 0")
+            choice = input("Введите номер системы (1 или 2): ").strip()
+            if choice == '1':
+                f_1, f_2, phi_1, phi_2 = f1, f2, phi1_1, phi1_2
+            elif choice == '2':
+                f_1, f_2, phi_1, phi_2 = g1, g2, phi2_1, phi2_2
+            else:
+                print("Некорректный выбор.")
+                continue
+            try:
+                x0, y0 = map(float, input("Введите начальные приближения x0 и y0 через пробел: ").split())
+                max_iter = int(input("Введите максимальное число итераций: "))
+                x_sol, y_sol, iterations, values = simple_iteration(x0, y0, phi_1, phi_2, max_iter=max_iter)
+                print(f"Решение найдено: x = {x_sol:.6f}, y = {y_sol:.6f} за {iterations} итераций")
+                plot_functions(f_1, f_2)
+            except ValueError as e:
+                print(f"Ошибка: {e}")
+            except Exception as e:
+                print(f"Некорректный ввод: {e}")
+        else:
+            print("Неверный ввод. Попробуйте снова.")
