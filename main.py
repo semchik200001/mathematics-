@@ -1,84 +1,70 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def f1(x, y):
-    return np.sin(x) + y - 1
+# 1. Исходные табличные точки (x_i, y_i)
+x_data = np.array([0.0, 0.2, 0.4, 0.6, 0.8,
+                   1.0, 1.2, 1.4, 1.6, 1.8, 2.0])
+y_data = np.array([
+    0.0000, 0.3997, 0.7967, 1.1745, 1.4977,
+    1.7143, 1.7820, 1.7060, 1.5282, 1.3092, 1.0909
+])
 
-def f2(x, y):
-    return x**2 + y**2 - 4
+# 2. Коэффициенты ЛИНЕЙНОЙ аппроксимации (MNK)
+#    L(x) = a0 + a1*x
+#    Ранее при ручном решении мы получили значения ~0.6077 и ~0.5741
+#    Ниже - уточнённые при помощи точного вычисления (np.polyfit) для этих же данных:
+a0 = 0.60745909
+a1 = 0.57428636
 
-def g1(x, y):
-    return np.cos(y) - x
+# 3. Коэффициенты КВАДРАТИЧНОЙ аппроксимации (MNK)
+#    Q(x) = b0 + b1*x + b2*x^2
+#    Они вычислены тем же способом (np.polyfit) на основании наших точек:
+b0 = -0.08574545
+b1 =  2.88496818
+b2 = -1.15534091
 
-def g2(x, y):
-    return y - np.exp(x) + 1
+# 4. Зададим сами функции для удобства
+def f_func(x):
+    """Исходная функция: f(x) = 12x / (x^4 + 6)."""
+    return 12*x / (x**4 + 6)
 
-def phi1_1(x, y):
-    return 1 - np.sin(x)
+def L_func(x):
+    """Линейная аппроксимация L(x) = a0 + a1*x."""
+    return a0 + a1*x
 
-def phi1_2(x, y):
-    return np.sqrt(4 - x**2) if x**2 <= 4 else y
+def Q_func(x):
+    """Квадратичная аппроксимация Q(x) = b0 + b1*x + b2*x^2."""
+    return b0 + b1*x + b2*x**2
 
-def phi2_1(x, y):
-    return np.cos(y)
+# 5. Создаём "плотную" сетку для гладких кривых (функции и аппроксимаций)
+x_dense = np.linspace(0, 2, 200)
 
-def phi2_2(x, y):
-    return np.exp(x) - 1
+# Считаем значения
+y_func  = f_func(x_dense)
+y_lin   = L_func(x_dense)
+y_quad  = Q_func(x_dense)
 
-def simple_iteration(x0, y0, phi1, phi2, tol=1e-6, max_iter=100):
-    x, y = x0, y0
-    values = [(x, y)]
-    for k in range(max_iter):
-        x_new, y_new = phi1(x, y), phi2(x, y)
-        error = np.sqrt((x_new - x)**2 + (y_new - y)**2)
-        values.append((x_new, y_new))
-        print(f"Iteration {k+1}: x = {x_new:.6f}, y = {y_new:.6f}, error = {error:.6e}")
-        if error < tol:
-            return x_new, y_new, k+1, values
-        x, y = x_new, y_new
-    print("Предупреждение: Метод не сошелся за указанное число итераций!")
-    return x, y, max_iter, values
+# 6. Построение графиков
+plt.figure()
 
-def plot_functions(f1, f2):
-    x = np.linspace(-2, 2, 400)
-    y = np.linspace(-2, 2, 400)
-    X, Y = np.meshgrid(x, y)
-    Z1 = f1(X, Y)
-    Z2 = f2(X, Y)
-    plt.contour(X, Y, Z1, levels=[0], colors='r')
-    plt.contour(X, Y, Z2, levels=[0], colors='b')
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.title("Графики уравнений")
-    plt.grid()
-    plt.show()
+# 6.1 Табличные точки - наносим в виде разброса (scatter)
+plt.scatter(x_data, y_data, label='Табличные точки')
 
-if __name__ == "__main__":
-    while True:
-        mode = input("Выберите режим (equation/system) или 'exit' для выхода: ").strip().lower()
-        if mode == 'exit':
-            break
-        elif mode == 'system':
-            print("Выберите систему уравнений:")
-            print("1. sin(x) + y = 1 и x^2 + y^2 = 4")
-            print("2. cos(y) - x = 0 и y - exp(x) + 1 = 0")
-            choice = input("Введите номер системы (1 или 2): ").strip()
-            if choice == '1':
-                f_1, f_2, phi_1, phi_2 = f1, f2, phi1_1, phi1_2
-            elif choice == '2':
-                f_1, f_2, phi_1, phi_2 = g1, g2, phi2_1, phi2_2
-            else:
-                print("Некорректный выбор.")
-                continue
-            try:
-                x0, y0 = map(float, input("Введите начальные приближения x0 и y0 через пробел: ").split())
-                max_iter = int(input("Введите максимальное число итераций: "))
-                x_sol, y_sol, iterations, values = simple_iteration(x0, y0, phi_1, phi_2, max_iter=max_iter)
-                print(f"Решение найдено: x = {x_sol:.6f}, y = {y_sol:.6f} за {iterations} итераций")
-                plot_functions(f_1, f_2)
-            except ValueError as e:
-                print(f"Ошибка: {e}")
-            except Exception as e:
-                print(f"Некорректный ввод: {e}")
-        else:
-            print("Неверный ввод. Попробуйте снова.")
+# 6.2 Исходная функция
+plt.plot(x_dense, y_func, label='Исходная функция f(x)')
+
+# 6.3 Линейная аппроксимация
+plt.plot(x_dense, y_lin, label='Линейная аппроксимация L(x)')
+
+# 6.4 Квадратичная аппроксимация
+plt.plot(x_dense, y_quad, label='Квадратичная аппроксимация Q(x)')
+
+# Подписи осей и легенда
+plt.xlabel('x')
+plt.ylabel('y')
+plt.title('Сравнение: исходная функция и аппроксимации')
+plt.legend()
+plt.grid()
+
+# Отображаем
+plt.show()
